@@ -78,6 +78,26 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
+  /// Helper untuk placeholder jika gambar gagal dimuat
+  Widget _buildImagePlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 250,
+      color: Colors.grey.shade200,
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.broken_image, size: 54, color: Colors.grey),
+          SizedBox(height: 8),
+          Text(
+            'Gambar tidak dapat dimuat',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Helper untuk membuat Badge / Chip informasi resep
   Widget _buildInfoChip({
     required IconData icon,
@@ -207,44 +227,32 @@ class _DetailScreenState extends State<DetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Gambar Resep Utama (Wajib menampilkan gambar + exception handling)
-          Image.network(
-            recipe.image,
-            width: double.infinity,
-            height: 250,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: double.infinity,
-                height: 220,
-                color: Colors.grey.shade200,
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.broken_image, size: 54, color: Colors.grey),
-                    SizedBox(height: 8),
-                    Text(
-                      'Gambar tidak dapat dimuat',
-                      style: TextStyle(color: Colors.grey),
+          if (recipe.image.isNotEmpty)
+            Image.network(
+              recipe.image,
+              width: double.infinity,
+              height: 250,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return _buildImagePlaceholder();
+              },
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return Container(
+                  width: double.infinity,
+                  height: 250,
+                  color: Colors.grey.shade100,
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF0F9D58),
                     ),
-                  ],
-                ),
-              );
-            },
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return Container(
-                width: double.infinity,
-                height: 220,
-                color: Colors.grey.shade100,
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF0F9D58),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            )
+          else
+            _buildImagePlaceholder(),
 
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -280,7 +288,8 @@ class _DetailScreenState extends State<DetailScreen> {
                     // Rating
                     _buildInfoChip(
                       icon: Icons.star,
-                      label: '★ ${recipe.rating} (${recipe.reviewCount})',
+                      label:
+                          '★ ${recipe.rating.toString().replaceAll(RegExp(r'\.0$'), '')} (${recipe.reviewCount})',
                       iconColor: Colors.amber.shade700,
                     ),
                     // Tingkat Kesulitan

@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Helper untuk menampilkan pesan error menggunakan SnackBar berwarna MERAH.
   /// Memenuhi ketentuan soal: "Jika error memunculkan snackbar error berwarna merah".
   void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -108,9 +109,10 @@ class _LoginScreenState extends State<LoginScreen> {
               // Field Input Username (rounded border sesuai contoh screenshot)
               TextField(
                 controller: _usernameController,
+                textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
-                  labelText: 'Username',
-                  hintText: 'Masukkan username',
+                  hintText: 'Username',
+                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                   fillColor: Colors.white,
                   filled: true,
                   contentPadding:
@@ -136,9 +138,11 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _isLoading ? null : _handleLogin(),
                 decoration: InputDecoration(
-                  labelText: 'Password',
-                  hintText: 'Masukkan password',
+                  hintText: 'Password',
+                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                   fillColor: Colors.white,
                   filled: true,
                   contentPadding:

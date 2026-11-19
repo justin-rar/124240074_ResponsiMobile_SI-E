@@ -21,6 +21,18 @@ class FavoriteScreen extends StatelessWidget {
 
   /// Widget thumbnail gambar dengan exception handling
   Widget _buildThumbnail(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.broken_image, color: Colors.grey),
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Image.network(
@@ -183,6 +195,7 @@ class FavoriteScreen extends StatelessWidget {
                           onPressed: () async {
                             await FavoriteService.removeFavorite(recipe.id);
                             if (context.mounted) {
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Dihapus dari favorite'),

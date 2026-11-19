@@ -97,16 +97,27 @@ class _ListScreenState extends State<ListScreen> {
 
   /// Widget untuk membangun thumbnail gambar dengan exception handling
   Widget _buildRecipeImage(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 105,
+        color: Colors.grey.shade200,
+        child: const Center(
+          child: Icon(Icons.broken_image, color: Colors.grey, size: 36),
+        ),
+      );
+    }
+
     return Image.network(
       imageUrl,
       width: double.infinity,
-      height: 110,
+      height: 105,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
         // Exception handling jika gambar gagal dimuat
         return Container(
           width: double.infinity,
-          height: 110,
+          height: 105,
           color: Colors.grey.shade200,
           child: const Center(
             child: Icon(Icons.broken_image, color: Colors.grey, size: 36),
@@ -117,12 +128,12 @@ class _ListScreenState extends State<ListScreen> {
         if (progress == null) return child;
         return Container(
           width: double.infinity,
-          height: 110,
+          height: 105,
           color: Colors.grey.shade100,
           child: Center(
             child: SizedBox(
-              width: 24,
-              height: 24,
+              width: 22,
+              height: 22,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 value: progress.expectedTotalBytes != null
@@ -165,7 +176,7 @@ class _ListScreenState extends State<ListScreen> {
           ),
           // Tombol Logout
           IconButton(
-            icon: const Icon(Icons.exit_to_app, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Logout',
             onPressed: _confirmLogout,
           ),
@@ -237,7 +248,7 @@ class _ListScreenState extends State<ListScreen> {
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: 8.0,
               mainAxisSpacing: 8.0,
-              childAspectRatio: 0.62,
+              childAspectRatio: 0.58,
             ),
             itemCount: _recipes.length,
             itemBuilder: (context, index) {
@@ -271,7 +282,8 @@ class _ListScreenState extends State<ListScreen> {
                       // Informasi Teks (Judul, Asal Makanan, Rating)
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 6.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -283,8 +295,9 @@ class _ListScreenState extends State<ListScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 12.5,
+                                  fontSize: 12,
                                   color: Color(0xFF263238),
+                                  height: 1.2,
                                 ),
                               ),
 
@@ -294,7 +307,7 @@ class _ListScreenState extends State<ListScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   color: Colors.grey.shade600,
                                   fontWeight: FontWeight.w500,
                                 ),
