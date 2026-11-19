@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-
-import '../models/article_model.dart';
 import '../services/auth_service.dart';
-import 'main_menu_screen.dart';
+import 'list_screen.dart';
 
-//import 'register_screen.dart';
-
-/// Halaman Login Pengguna.
-/// Menggunakan `StatefulWidget` karena terdapat state lokal:
-/// - Nilai controller input text
-/// - Status loading saat tombol login ditekan
+/// Halaman Login Aplikasi Resep Masakan.
+///
+/// Memenuhi ketentuan soal nomor 1 (Fitur Login - 20 Poin):
+/// - "Jika error memunculkan snackbar error berwarna merah"
+/// - "Login menggunakan akun dengan username=nama panggilan kalian & password= 3 digit akhir NIM kalian"
+/// - "Login tersimpan di sharedPreferences sehingga jika dikeluarkan tanpa logout user masih dapat masuk ke aplikasi kembali"
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -18,11 +16,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controller untuk membaca input teks dari form TextField
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // Variabel untuk menampilkan indikator loading saat proses validasi
   bool _isLoading = false;
 
   /// Helper untuk menampilkan pesan error menggunakan SnackBar berwarna MERAH.
@@ -30,64 +25,50 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(color: Colors.white)),
-        backgroundColor:
-            Colors.red, // Wajib merah sesuai instruksi modul & soal
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+        ),
+        backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
 
-  /// Fungsi logika saat tombol Login ditekan
-  void _login() async {
+  /// Fungsi saat tombol Login ditekan
+  void _handleLogin() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    // 1. Validasi input: Cek apakah field kosong
+    // 1. Validasi input: Cek jika field kosong
     if (username.isEmpty || password.isEmpty) {
       _showErrorSnackBar('Username dan password tidak boleh kosong');
       return;
     }
 
-    // Aktifkan status loading
     setState(() => _isLoading = true);
 
-    // 2. Memeriksa kecocokan data ke SharedPreferences melalui AuthService
+    // 2. Validasi login melalui AuthService (kredensial: nama panggilan & 3 digit akhir NIM)
     final success = await AuthService.login(username, password);
 
-    // Nonaktifkan status loading setelah proses async selesai
     setState(() => _isLoading = false);
 
-    // 3. Tangani hasil login
+    // 3. Tangani hasil validasi
     if (success && mounted) {
-      // Tampilkan notifikasi berhasil (opsional hijau)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Selamat datang, $username!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      // Pindah ke Halaman Utama.
-      // Menggunakan `pushReplacement` agar halaman Login digantikan dan
-      // user tidak bisa kembali (Back) ke halaman Login tanpa menekan tombol Logout.
+      // Navigasi ke Halaman List Resep (ListScreen)
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => MainMenuScreen(username: username),
-        ),
+        MaterialPageRoute(builder: (context) => const ListScreen()),
       );
     } else if (mounted) {
-      // Jika username/password salah, munculkan SnackBar error berwarna merah
+      // Munculkan snackbar merah jika kredensial salah
       _showErrorSnackBar('Login gagal: Username atau password salah');
     }
   }
 
   @override
   void dispose() {
-    // Selalu dispose TextEditingController untuk mencegah kebocoran memori (memory leak)
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -96,81 +77,124 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login'), centerTitle: true),
+      backgroundColor: const Color(0xFFF2F7F4),
+      appBar: AppBar(
+        title: const Text(
+          'Login',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF0F9D58),
+        elevation: 0,
+      ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 20.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Field Input Username
-              TextField(
-                controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  border: OutlineInputBorder(), // Border kotak standar modul
+              // Judul sambutan sesuai screenshot soal
+              const Text(
+                'Selamat Datang di Resep Masakan',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF263238),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 36),
 
-              // Field Input Password (obscureText: true untuk menyembunyikan karakter)
+              // Field Input Username (rounded border sesuai contoh screenshot)
+              TextField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  hintText: 'Masukkan username',
+                  fillColor: Colors.white,
+                  filled: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide: const BorderSide(color: Color(0xFFB0BEC5)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide: const BorderSide(color: Color(0xFFCFD8DC)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF0F9D58), width: 1.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Field Input Password
               TextField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Password',
-                  border: OutlineInputBorder(),
+                  hintText: 'Masukkan password',
+                  fillColor: Colors.white,
+                  filled: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide: const BorderSide(color: Color(0xFFB0BEC5)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide: const BorderSide(color: Color(0xFFCFD8DC)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF0F9D58), width: 1.5),
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
-              // Tombol Login
+              // Tombol Login rounded
               SizedBox(
-                width: double.infinity,
-                height: 48,
+                height: 44,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
+                  onPressed: _isLoading ? null : _handleLogin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF0F9D58),
+                    elevation: 1.5,
+                    side: const BorderSide(color: Color(0xFFCFD8DC)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22.0),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 36, vertical: 10),
+                  ),
                   child: _isLoading
                       ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF0F9D58),
+                          ),
                         )
                       : const Text(
                           'Login',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF37474F),
                           ),
                         ),
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Navigasi menuju halaman Register jika belum memiliki akun
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.center,
-              //   children: [
-              //     const Text('Belum punya akun? '),
-              //     GestureDetector(
-              //       onTap: () {
-              //         Navigator.push(
-              //           context,
-              //           MaterialPageRoute(
-              //             builder: (context) => const RegisterScreen(),
-              //           ),
-              //         );
-              //       },
-              //       child: Text(
-              //         'Daftar di sini',
-              //         style: TextStyle(
-              //           color: Theme.of(context).colorScheme.primary,
-              //           fontWeight: FontWeight.bold,
-              //         ),
-              //       ),
-              //     ),
-              //   ],
-              // ),
             ],
           ),
         ),

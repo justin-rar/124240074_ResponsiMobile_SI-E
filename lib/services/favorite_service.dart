@@ -1,64 +1,57 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/article_model.dart';
+import '../models/recipe_model.dart';
 
-/// Service untuk mengelola data artikel/blog/report yang difavoritkan pengguna.
-/// Mengacu pada Modul VI (Local Storage - Hive Database):
-/// - Hive adalah database NoSQL lokal yang sangat cepat, ringan, dan reaktif.
-/// - Data disimpan di dalam "Box" (serupa tabel/koleksi).
-/// - Menggunakan `box.listenable()` sehingga UI yang memakai `ValueListenableBuilder`
-///   akan OTOMATIS ter-update begitu ada item yang ditambah atau dihapus.
-/// - Memenuhi ketentuan soal:
-///   "List data favourite terupdate terlepas dilakukannya perubahan di halaman favourite
-///   maupun dari halaman detil (tidak harus dari salah satunya)"
+/// Service untuk mengelola data resep yang difavoritkan pengguna menggunakan Hive.
+///
+/// Memenuhi ketentuan soal:
+/// 1. "Penambahan data favourite dilakukan dari halaman detil"
+/// 2. "List data favourite terupdate terlepas dilakukannya perubahan di halaman favourite
+///     maupun dari halaman detil (tidak harus dari salah satunya)"
+///
+/// Penggunaan `ValueListenableBuilder` bersama `box.listenable()` memastikan
+/// perubahan favorit langsung tersinkronisasi di seluruh halaman secara real-time.
 class FavoriteService {
-  // Nama box Hive untuk menyimpan data favorit
-  static const String boxName = 'favorites_box';
+  // Nama box Hive untuk menyimpan data resep favorit
+  static const String boxName = 'recipes_favorite_box';
 
-  /// Mendapatkan instance box Hive yang sudah dibuka sebelumnya di `main.dart`.
+  /// Mendapatkan instance box Hive yang sudah di-open di `main.dart`.
   static Box get box => Hive.box(boxName);
 
-  /// Mengembalikan `ValueListenable` dari box Hive.
-  /// Digunakan oleh widget `ValueListenableBuilder` di `DetailScreen` dan `FavoriteScreen`
-  /// agar tampilan dapat langsung merespons perubahan data secara real-time.
+  /// Mengembalikan `ValueListenable` dari box Hive agar UI bisa me-rebuild secara otomatis
+  /// saat ada data favorit baru ditambahkan atau dihapus.
   static ValueListenable<Box> listenable() => box.listenable();
 
-  /// Mengecek apakah item dengan ID tertentu sudah ada di daftar favorit.
-  /// Kompleksitas O(1) karena menggunakan pencarian Key di Hive.
+  /// Memeriksa apakah resep dengan ID tertentu sudah ada di daftar favorit.
   static bool isFavorite(int id) {
     return box.containsKey(id.toString());
   }
 
-  /// Menambahkan artikel ke favorit jika belum ada, atau menghapusnya jika sudah ada (Toggle).
-  /// Mengembalikan:
-  /// - `true` jika item berhasil ditambahkan ke favorit.
-  /// - `false` jika item dihapus dari favorit.
-  static Future<bool> toggleFavorite(ArticleModel article) async {
-    final key = article.id.toString();
+  /// Menambahkan resep ke daftar favorit jika belum ada, atau menghapusnya jika sudah ada.
+  /// Mengembalikan `true` jika ditambahkan, atau `false` jika dihapus.
+  static Future<bool> toggleFavorite(RecipeModel recipe) async {
+    final key = recipe.id.toString();
     if (box.containsKey(key)) {
-      // Jika sudah ada di favorit, hapus dari box
       await box.delete(key);
-      return false; // Status sekarang: Tidak favorit
+      return false; // Dihapus dari favorit
     } else {
-      // Jika belum ada, simpan data artikel dalam bentuk Map (JSON)
-      await box.put(key, article.toMap());
-      return true; // Status sekarang: Favorit
+      await box.put(key, recipe.toMap());
+      return true; // Ditambahkan ke favorit
     }
   }
 
-  /// Menghapus item tertentu dari box favorit berdasarkan ID.
+  /// Menghapus resep dari daftar favorit berdasarkan ID resep.
   static Future<void> removeFavorite(int id) async {
     await box.delete(id.toString());
   }
 
-  /// Mengambil semua data favorit yang tersimpan di dalam box Hive.
-  /// Data dikonversi kembali dari Map menjadi List of ArticleModel.
-  static List<ArticleModel> getAllFavorites() {
-    final list = <ArticleModel>[];
+  /// Mengambil semua resep yang ada di daftar favorit dari box Hive.
+  static List<RecipeModel> getAllFavorites() {
+    final list = <RecipeModel>[];
     for (var key in box.keys) {
       final val = box.get(key);
       if (val is Map) {
-        list.add(ArticleModel.fromMap(Map<dynamic, dynamic>.from(val)));
+        list.add(RecipeModel.fromMap(Map<dynamic, dynamic>.from(val)));
       }
     }
     return list;

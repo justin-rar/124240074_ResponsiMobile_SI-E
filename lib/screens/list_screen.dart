@@ -1,397 +1,316 @@
 import 'package:flutter/material.dart';
-import '../models/article_model.dart';
+import '../models/recipe_model.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import 'detail_screen.dart';
+import 'favorite_screen.dart';
+import 'login_screen.dart';
 
-/// Halaman List Data (Menampilkan daftar News, Blogs, atau Reports).
-/// Memenuhi ketentuan soal:
-/// 1. "Wajib menampilkan judul dari data"
-/// 2. "Wajib menampilkan gambar sebagai leading (thumbnail) & memberikan exception handling apabila gambarnya tidak muncul"
-/// 3. "Wajib memunculkan author dari data"
-/// 4. "Fitur Filter berupa chip untuk memfilter list data berdasarkan author dari tiap data"
+/// Halaman List Resep Masakan (Halaman Utama).
+///
+/// Memenuhi ketentuan soal nomor 2 (Halaman List - 30 Poin):
+/// - "Halaman list berisi data-data dari resep yang tersedia dari API"
+/// - "Wajib menampilkan judul dari data"
+/// - "Wajib menampilkan gambar sebagai leading (thumbnail) & memberikan exception handling apabila gambarnya tidak muncul"
+/// - "Wajib memunculkan asal makanan dari data"
+/// - "Wajib memunculkan rating dari data"
+/// - "Tampilan list boleh bebas" (Ditampilkan dalam format Grid 3 kolom sesuai screenshot soal)
+/// - Dilengkapi tombol navigasi ke halaman Favorite dan tombol Logout pada AppBar.
 class ListScreen extends StatefulWidget {
-  final String endpoint; // Endpoint API: 'articles', 'blogs', atau 'reports'
-  final String title;    // Judul AppBar: 'News', 'Blogs', atau 'Reports'
-
-  const ListScreen({
-    super.key,
-    required this.endpoint,
-    required this.title,
-  });
+  const ListScreen({super.key});
 
   @override
   State<ListScreen> createState() => _ListScreenState();
 }
 
 class _ListScreenState extends State<ListScreen> {
-  // Menyimpan semua data asli dari API
-  List<ArticleModel> _allArticles = [];
-  // Menyimpan data hasil filter yang ditampilkan ke UI
-  List<ArticleModel> _filteredArticles = [];
-  // Daftar semua author unik untuk dijadikan pilihan FilterChip
-  List<String> _authorList = [];
-  // Author yang sedang aktif dipilih (default: 'All' / Semua)
-  String _selectedAuthor = 'All';
-
-  // State untuk mengontrol UI loading dan penanganan error
+  List<RecipeModel> _recipes = [];
   bool _isLoading = true;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    // Memanggil API saat pertama kali halaman dibuka
-    _fetchData();
+    _fetchRecipes();
   }
 
-  /// Fungsi untuk mengambil data dari REST API via ApiService
-  Future<void> _fetchData() async {
+  /// Mengambil data resep dari API dummyjson.com/recipes
+  Future<void> _fetchRecipes() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // 1. Ambil data mentah (JSON List) dari API
-      final rawList = await ApiService.getDataList(widget.endpoint);
-
-      // 2. Mapping JSON ke List of ArticleModel
-      final List<ArticleModel> loaded = rawList
-          .map((item) => ArticleModel.fromMap(item, category: widget.endpoint))
-          .toList();
-
-      // 3. Kumpulkan semua nama author secara unik menggunakan Set
-      final Set<String> uniqueAuthors = {};
-      for (var a in loaded) {
-        final author = a.authorFormatted.trim();
-        if (author.isNotEmpty) {
-          uniqueAuthors.add(author);
-        }
+      final recipes = await ApiService.getRecipes();
+      if (mounted) {
+        setState(() {
+          _recipes = recipes;
+          _isLoading = false;
+        });
       }
-
-      final sortedAuthors = uniqueAuthors.toList()..sort();
-
-      // 4. Update state tampilan
-      setState(() {
-        _allArticles = loaded;
-        _authorList = ['All', ...sortedAuthors]; // 'All' di posisi pertama
-        _selectedAuthor = 'All';
-        _filteredArticles = loaded;
-        _isLoading = false;
-      });
     } catch (e) {
-      // Jika request API gagal (misal tidak ada koneksi internet)
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
     }
   }
 
-  /// Fungsi saat salah satu FilterChip diklik oleh pengguna
-  void _onFilterSelected(String author) {
-    setState(() {
-      _selectedAuthor = author;
-      if (author == 'All') {
-        // Tampilkan semua data jika memilih 'All'
-        _filteredArticles = _allArticles;
-      } else {
-        // Filter data yang nama author-nya cocok dengan pilihan
-        _filteredArticles = _allArticles
-            .where((item) => item.authorFormatted == author)
-            .toList();
-      }
-    });
-  }
-
-  /// Widget untuk menampilkan deretan FilterChip author secara horizontal
-  Widget _buildFilterChips() {
-    if (_authorList.length <= 1) return const SizedBox.shrink();
-
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                const Icon(Icons.filter_list, size: 18, color: Colors.black54),
-                const SizedBox(width: 6),
-                Text(
-                  'Filter berdasarkan Author / Sumber (${_filteredArticles.length} data):',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
-            ),
+  /// Dialog konfirmasi untuk Logout
+  void _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
           ),
-          // Deretan FilterChip yang dapat digeser menyamping (horizontal scroll)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: _authorList.map((author) {
-                final isSelected = _selectedAuthor == author;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: FilterChip(
-                    label: Text(author),
-                    selected: isSelected,
-                    selectedColor: Colors.blue.shade100,
-                    checkmarkColor: Colors.blue.shade700,
-                    backgroundColor: Colors.grey.shade200,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.blue.shade800 : Colors.black87,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 13,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    onSelected: (_) => _onFilterSelected(author),
-                  ),
-                );
-              }).toList(),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Logout'),
           ),
         ],
       ),
     );
+
+    if (shouldLogout == true) {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    }
   }
 
-  /// Widget thumbnail gambar lengkap dengan EXCEPTION HANDLING
-  /// Wajib sesuai soal: "memberikan exception handling apabila gambarnya tidak muncul"
-  Widget _buildThumbnail(String imageUrl) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 70,
-        height: 70,
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          // errorBuilder dipanggil ketika URL gambar error/rusak/404
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: 70,
-              height: 70,
-              color: Colors.grey.shade300,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.broken_image, color: Colors.grey.shade600, size: 24),
-                  const SizedBox(height: 2),
-                  Text(
-                    'No Image',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 9),
-                  ),
-                ],
+  /// Widget untuk membangun thumbnail gambar dengan exception handling
+  Widget _buildRecipeImage(String imageUrl) {
+    return Image.network(
+      imageUrl,
+      width: double.infinity,
+      height: 110,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        // Exception handling jika gambar gagal dimuat
+        return Container(
+          width: double.infinity,
+          height: 110,
+          color: Colors.grey.shade200,
+          child: const Center(
+            child: Icon(Icons.broken_image, color: Colors.grey, size: 36),
+          ),
+        );
+      },
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return Container(
+          width: double.infinity,
+          height: 110,
+          color: Colors.grey.shade100,
+          child: Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                value: progress.expectedTotalBytes != null
+                    ? progress.cumulativeBytesLoaded /
+                        progress.expectedTotalBytes!
+                    : null,
+                color: const Color(0xFF0F9D58),
               ),
-            );
-          },
-          // loadingBuilder menampilkan animasi loading saat gambar sedang didownload
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child; // Gambar sudah selesai dimuat
-            return Container(
-              width: 70,
-              height: 70,
-              color: Colors.grey.shade200,
-              child: const Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: const Color(0xFFF2F7F4),
       appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-      ),
-      body: _isLoading
-          // Tampilkan progress indicator saat data sedang diambil
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              // Tampilkan pesan error jika request API gagal
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline,
-                            size: 56, color: Colors.red),
-                        const SizedBox(height: 12),
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: _fetchData,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Coba Lagi'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : Column(
-                  children: [
-                    // Bagian FilterChip
-                    _buildFilterChips(),
-
-                    // Bagian Daftar List Data
-                    Expanded(
-                      child: _filteredArticles.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Tidak ada data untuk author "$_selectedAuthor"',
-                                style: TextStyle(color: Colors.grey.shade600),
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _fetchData, // Fitur tarik ke bawah untuk refresh
-                              child: ListView.builder(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                itemCount: _filteredArticles.length,
-                                itemBuilder: (context, index) {
-                                  final article = _filteredArticles[index];
-                                  return Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 6,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(10),
-                                      // Navigasi ke Halaman Detail saat kartu diklik
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => DetailScreen(
-                                              article: article,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12.0),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            // 1. Gambar leading dengan exception handling
-                                            _buildThumbnail(article.imageUrl),
-                                            const SizedBox(width: 12),
-
-                                            // 2. Kolom informasi: Judul, Author, dan Tanggal
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  // Wajib: Menampilkan Judul
-                                                  Text(
-                                                    article.title,
-                                                    maxLines: 2,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: const TextStyle(
-                                                      fontSize: 15,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      height: 1.25,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 6),
-
-                                                  // Wajib: Menampilkan Author / Sumber
-                                                  Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.person,
-                                                        size: 14,
-                                                        color: Colors
-                                                            .blue.shade700,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Expanded(
-                                                        child: Text(
-                                                          article
-                                                              .authorFormatted,
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors
-                                                                .grey.shade700,
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 4),
-
-                                                  // Tanggal publikasi terformat rapi
-                                                  Text(
-                                                    article
-                                                        .publishedAtFormatted,
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color:
-                                                          Colors.grey.shade500,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-
-                                            // Ikon navigasi ke kanan
-                                            const Icon(
-                                              Icons.chevron_right,
-                                              color: Colors.black26,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                    ),
-                  ],
+        title: const Text(
+          'Resep Masakan',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF0F9D58),
+        elevation: 1,
+        actions: [
+          // Tombol menuju Halaman Favorite
+          IconButton(
+            icon: const Icon(Icons.favorite, color: Colors.white),
+            tooltip: 'Halaman Favorite',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const FavoriteScreen(),
                 ),
+              );
+            },
+          ),
+          // Tombol Logout
+          IconButton(
+            icon: const Icon(Icons.exit_to_app, color: Colors.white),
+            tooltip: 'Logout',
+            onPressed: _confirmLogout,
+          ),
+        ],
+      ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF0F9D58),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Terjadi Kesalahan:\n$_errorMessage',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: Colors.red),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _fetchRecipes,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba Lagi'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F9D58),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_recipes.isEmpty) {
+      return const Center(
+        child: Text(
+          'Tidak ada data resep tersedia.',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: const Color(0xFF0F9D58),
+      onRefresh: _fetchRecipes,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Responsif: 3 kolom untuk layar HP standar (sesuai contoh soal) atau 4 jika lebar
+          final int crossAxisCount = constraints.maxWidth > 600 ? 4 : 3;
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(8.0),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 8.0,
+              childAspectRatio: 0.62,
+            ),
+            itemCount: _recipes.length,
+            itemBuilder: (context, index) {
+              final recipe = _recipes[index];
+
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DetailScreen(
+                        recipeId: recipe.id,
+                        initialRecipe: recipe,
+                      ),
+                    ),
+                  );
+                },
+                child: Card(
+                  elevation: 1.5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  color: Colors.white,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Thumbnail Gambar dengan Exception Handling
+                      _buildRecipeImage(recipe.image),
+
+                      // Informasi Teks (Judul, Asal Makanan, Rating)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Judul Resep (Wajib menampilkan judul dari data)
+                              Text(
+                                recipe.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12.5,
+                                  color: Color(0xFF263238),
+                                ),
+                              ),
+
+                              // Asal Makanan & Rating (Wajib memunculkan asal & rating)
+                              Text(
+                                '${recipe.cuisine} • ★ ${recipe.rating}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

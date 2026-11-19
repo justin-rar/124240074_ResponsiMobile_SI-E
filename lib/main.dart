@@ -1,41 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'screens/list_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/main_menu_screen.dart';
 import 'services/auth_service.dart';
 import 'services/favorite_service.dart';
 
-/// Entry point utama aplikasi Flutter.
-/// Diberi keyword `async` karena kita perlu membaca SharedPreferences dan
-/// menginisialisasi database Hive sebelum tampilan UI pertama kali digambar.
+/// Entry point utama aplikasi Resep Masakan.
+/// Diberi keyword `async` untuk:
+/// 1. Menginisialisasi database lokal Hive untuk fitur Favorite.
+/// 2. Membaca status login di SharedPreferences (auto-login jika belum logout).
 void main() async {
-  // Wajib dipanggil jika ada operasi asynchronous (seperti SharedPreferences/Hive)
-  // di dalam fungsi main() sebelum `runApp()`. Mencegah error binding Flutter.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Inisialisasi Hive (Local Database)
-  // Hive.initFlutter() menyiapkan direktori internal perangkat untuk menyimpan database.
+  // 1. Inisialisasi Hive (Local Database) untuk fitur Favorite
   await Hive.initFlutter();
-  // Membuka box penyimpanan untuk data favorit agar siap dibaca/ditulis kapan saja.
   await Hive.openBox(FavoriteService.boxName);
 
-  // 2. Cek status sesi login (Sesuai ketentuan soal: auto-login jika belum logout)
-  // Membaca nilai dari SharedPreferences melalui AuthService.
+  // 2. Cek status sesi login (Ketentuan soal: Login tersimpan di sharedPreferences)
   final isLoggedIn = await AuthService.isLoggedIn();
-  final currentUser = await AuthService.getCurrentUser();
 
   // 3. Menjalankan aplikasi
-  // Jika sudah login dan username ada, langsung ke MainMenuScreen.
-  // Jika belum login, arahkan ke LoginScreen.
   runApp(MyApp(
-    initialScreen: (isLoggedIn && currentUser != null)
-        ? MainMenuScreen(username: currentUser)
-        : const LoginScreen(),
+    initialScreen: isLoggedIn ? const ListScreen() : const LoginScreen(),
   ));
 }
 
-/// Root widget aplikasi.
-/// Mengatur konfigurasi global seperti Tema (ThemeData), judul, dan halaman awal (home).
+/// Root widget aplikasi
 class MyApp extends StatelessWidget {
   final Widget initialScreen;
   const MyApp({super.key, required this.initialScreen});
@@ -43,21 +33,29 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Spaceflight News Portal',
-      debugShowCheckedModeBanner: false, // Menghilangkan banner debug di pojok kanan atas
+      title: 'Resep Masakan',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Pengaturan warna tema utama aplikasi (Biru solid)
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue.shade700),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0F9D58),
+          primary: const Color(0xFF0F9D58),
+        ),
         useMaterial3: true,
-        // Gaya default untuk semua AppBar di aplikasi agar seragam
-        appBarTheme: AppBarTheme(
-          centerTitle: true,
-          elevation: 2,
-          backgroundColor: Colors.blue.shade700,
+        scaffoldBackgroundColor: const Color(0xFFF2F7F4),
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 1,
+          backgroundColor: Color(0xFF0F9D58),
           foregroundColor: Colors.white,
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+          iconTheme: IconThemeData(color: Colors.white),
         ),
       ),
-      home: initialScreen, // Menampilkan halaman yang ditentukan dari pengecekan sesi di main()
+      home: initialScreen,
     );
   }
 }

@@ -2,11 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+import 'package:latresuas/models/recipe_model.dart';
 import 'package:latresuas/screens/login_screen.dart';
-import 'package:latresuas/screens/main_menu_screen.dart';
-import 'package:latresuas/screens/register_screen.dart';
-import 'package:latresuas/models/article_model.dart';
 import 'package:latresuas/screens/detail_screen.dart';
+import 'package:latresuas/screens/favorite_screen.dart';
 import 'package:latresuas/services/favorite_service.dart';
 
 void main() {
@@ -24,59 +23,57 @@ void main() {
     );
 
     expect(find.text('Login'), findsWidgets);
-    expect(find.text('Daftar di sini'), findsOneWidget);
+    expect(find.text('Selamat Datang di Resep Masakan'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(2));
   });
 
-  testWidgets('RegisterScreen renders properly', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: RegisterScreen(),
-      ),
-    );
-
-    expect(find.text('Registrasi Akun'), findsOneWidget);
-    expect(find.text('Daftar'), findsOneWidget);
-  });
-
-  testWidgets('MainMenuScreen renders menu cards and logout button',
+  testWidgets('DetailScreen renders recipe information properly',
       (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: MainMenuScreen(username: 'tester123'),
-      ),
-    );
-
-    expect(find.text('Halo, tester123!'), findsOneWidget);
-    expect(find.text('News (Articles)'), findsOneWidget);
-    expect(find.text('Blogs'), findsOneWidget);
-    expect(find.text('Reports'), findsOneWidget);
-    expect(find.text('Favourite'), findsOneWidget);
-    expect(find.text('LOGOUT'), findsOneWidget);
-  });
-
-  testWidgets('DetailScreen renders article information',
-      (WidgetTester tester) async {
-    final article = ArticleModel(
-      id: 999,
-      title: 'Misi Baru ke Mars',
-      url: 'https://mars.nasa.gov',
-      imageUrl: '',
-      newsSite: 'NASA',
-      summary: 'Penjelasan misi baru menuju Mars.',
-      publishedAt: '2026-11-16T12:00:00Z',
-      authors: ['Dr. John Doe'],
-      category: 'articles',
+    final recipe = RecipeModel(
+      id: 1,
+      name: 'Classic Margherita Pizza',
+      ingredients: ['Pizza dough', 'Tomato sauce', 'Mozzarella'],
+      instructions: ['Preheat oven.', 'Bake for 15 minutes.'],
+      prepTimeMinutes: 20,
+      cookTimeMinutes: 15,
+      servings: 4,
+      difficulty: 'Easy',
+      cuisine: 'Italian',
+      caloriesPerServing: 300,
+      tags: ['Pizza'],
+      userId: 1,
+      image: '',
+      rating: 4.6,
+      reviewCount: 98,
+      mealType: ['Dinner'],
     );
 
     await tester.pumpWidget(
       MaterialApp(
-        home: DetailScreen(article: article),
+        home: DetailScreen(
+          recipeId: recipe.id,
+          initialRecipe: recipe,
+        ),
       ),
     );
 
-    expect(find.text('Misi Baru ke Mars'), findsOneWidget);
-    expect(find.text('Dr. John Doe'), findsOneWidget);
-    expect(find.text('Penjelasan misi baru menuju Mars.'), findsOneWidget);
-    expect(find.text('BACA SITUS RESMI LENGKAP'), findsOneWidget);
+    expect(find.text('Detail Resep'), findsOneWidget);
+    expect(find.text('Classic Margherita Pizza'), findsOneWidget);
+    expect(find.text('Bahan-bahan'), findsOneWidget);
+    expect(find.text('Langkah Memasak'), findsOneWidget);
+    expect(find.text('Pizza dough'), findsOneWidget);
+    expect(find.text('Preheat oven.'), findsOneWidget);
+  });
+
+  testWidgets('FavoriteScreen renders empty state when no favorites exist',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: FavoriteScreen(),
+      ),
+    );
+
+    expect(find.text('Favorite'), findsOneWidget);
+    expect(find.text('Belum Ada Resep Favorit'), findsOneWidget);
   });
 }
